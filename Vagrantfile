@@ -31,7 +31,7 @@ Vagrant.configure("2") do |config|
       ansible.playbook = "ansible/playbook.yml"
     end
 
-    # [TODO]: Move provisioner scripts to scripts directory
+    # [TODO]: #1 Move provisioner scripts to scripts directory
 
     wsl2_ssh_key_path = File.join(Dir.home, ".ssh", "id_rsa")
 
