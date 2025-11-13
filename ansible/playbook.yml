@@ -1,0 +1,80 @@
+---
+- name: Install homelab dependencies
+  hosts: all
+  gather_facts: true
+  become: false
+
+  tasks:
+
+    - name: Ensure required dependencies are installed
+      ansible.builtin.package:
+        name:
+          - build-essential
+          - curl
+          - git
+          - tar
+        state: present
+      become: true 
+      
+
+    - name: Check if Homebrew is installed
+      ansible.builtin.stat:
+        path: /home/linuxbrew/.linuxbrew/bin/brew
+      register: brew_stat
+
+    - name: Install Homebrew
+      ansible.builtin.shell: |
+        NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      args:
+        creates: /home/linuxbrew/.linuxbrew/bin/brew
+      when: not brew_stat.stat.exists
+
+    - name: Ensure Homebrew is installed and check its version
+      ansible.builtin.shell: /home/linuxbrew/.linuxbrew/bin/brew --version
+      when: brew_stat.stat.exists
+
+    - name: Check if k3s is installed
+      ansible.builtin.stat:
+        path: /etc/rancher/k3s/k3s.yaml
+      register: k3s_stat
+      
+    - name: Install k3s
+      ansible.builtin.shell: |
+        curl -sfL https://get.k3s.io | sh -
+      args:
+        creates: /etc/rancher/k3s/k3s.yaml
+      when: not k3s_stat.stat.exists
+
+    - name: Ensure k3s is installed and check its version
+      ansible.builtin.shell: k3s --version
+      when: k3s_stat.stat.exists
+
+    - name: Get K3s kubeconfig
+      command: cat /etc/rancher/k3s/k3s.yaml
+      become: true
+      register: k3s_kubeconfig
+
+    - name: Create the .kube directory for vagrant user
+      file:
+        path: "/home/vagrant/.kube"
+        state: directory
+        mode: '0755'
+        owner: vagrant
+        group: vagrant
+
+    - name: Copy K3s kubeconfig to vagrant's .kube directory
+      copy:
+        content: "{{ k3s_kubeconfig.stdout }}"
+        dest: "/home/vagrant/.kube/config.yml"
+        owner: vagrant
+        group: vagrant
+        mode: '0644'
+
+    - name: Set kubeconfig environment variable for vagrant user
+      lineinfile:
+        path: "/home/vagrant/.bashrc"
+        line: 'export KUBECONFIG=/home/vagrant/.kube/config.yml'
+        create: yes
+        owner: vagrant
+        group: vagrant
+
