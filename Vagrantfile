@@ -39,20 +39,20 @@ Vagrant.configure("2") do |config|
         wsl2_ssh_key = File.read(wsl2_ssh_key_path)
         
         config.vm.provision :shell, :inline => <<-SHELL
-            echo 'WSL2-specific: Copying host primary SSH Key to VM for provisioning...'
-            
-            mkdir -p /root/.ssh
-            echo '#{wsl2_ssh_key}' > /root/.ssh/id_rsa
-            chmod 600 /root/.ssh/id_rsa
-            chown root:root /root/.ssh/id_rsa
-            
-            mkdir -p /home/vagrant/.ssh
-            echo '#{wsl2_ssh_key}' > /home/vagrant/.ssh/id_rsa
-            chmod 600 /home/vagrant/.ssh/id_rsa
-            chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
-            
-            sudo su - vagrant -c 'ssh-keygen -R github.com'
-            ssh-keyscan github.com >> /home/vagrant/.ssh/known_hosts
+          echo 'WSL2-specific: Copying host primary SSH Key to VM for provisioning...'
+          
+          mkdir -p /root/.ssh
+          echo '#{wsl2_ssh_key}' > /root/.ssh/id_rsa
+          chmod 600 /root/.ssh/id_rsa
+          chown root:root /root/.ssh/id_rsa
+          
+          mkdir -p /home/vagrant/.ssh
+          echo '#{wsl2_ssh_key}' > /home/vagrant/.ssh/id_rsa
+          chmod 600 /home/vagrant/.ssh/id_rsa
+          chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
+          
+          sudo su - vagrant -c 'ssh-keygen -R github.com'
+          ssh-keyscan github.com >> /home/vagrant/.ssh/known_hosts
         SHELL
     else
         raise Vagrant::Errors::VagrantError, "\n\nERROR: Primary SSH Key not found at #{wsl2_ssh_key_path} (required on WSL2 host).\nEnsure your primary key is in this location.\n\n"
@@ -74,5 +74,15 @@ Vagrant.configure("2") do |config|
 
       sudo -H -u vagrant git clone git@github.com:aadil96/lab.git /home/vagrant/lab
     SHELL
+
+    $script = <<-SCRIPT
+      brew install k9s chezmoi
+      curl -L -o devpod "https://github.com/loft-sh/devpod/releases/latest/download/devpod-linux-amd64" && sudo install -c -m 0755 devpod /usr/local/bin && rm -f devpod
+      devpod provider add docker
+      devpod ide use none
+      devpod context set-options -o DOTFILES_URL=git@github.com:aadil96/dotfiles-demo.git -o DOTFILES_SCRIPT=bin/.local/bin/dotfiles
+    SCRIPT
+
+    config.vm.provision "shell", inline: $script, privileged: false
   end
 end

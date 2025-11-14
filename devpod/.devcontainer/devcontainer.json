@@ -2,5 +2,7 @@
     "build": {
         "context": "..",
         "dockerfile": "Dockerfile"
-    }
+    },
+    "name": "devpod-ubuntu-24.04",
+    "postCreateCommand": "/bin/bash scripts/setup"
 }
